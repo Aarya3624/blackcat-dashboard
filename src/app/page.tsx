@@ -59,7 +59,7 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-row">
       <div
-        className={` flex-shrink-0 h-screen border-r border-gray-800 transition-width duration-300 ease-in-out`}
+        className={` flex-shrink-0 h-screen border-r border-grey-300 transition-width duration-300 ease-in-out`}
         style={{
           backgroundColor: "#141414",
           width: isCollapsed ? "52px" : "200px",
@@ -82,11 +82,11 @@ export default function Home() {
               <div
                 key={tab}
                 className={`flex items-center rounded-md ${
-                  activeTab === tab ? "bg-white" : "border"
-                } transition duration-300 ease-in-out hover:border-gray-200 hover:cursor-pointer`}
+                  activeTab === tab ? "bg-white" : "border border-grey-400"
+                } transition duration-500 ease-in-out hover:border-grey-200 hover:cursor-pointer hover:duration-500`}
                 style={{
                   marginInline: "8px",
-                  borderColor: activeTab === tab ? "white" : "#141414",
+                  // borderColor: activeTab === tab ? "white" : "#141414",
                 }}
                 onClick={() => setActiveTab(tab)}
               >

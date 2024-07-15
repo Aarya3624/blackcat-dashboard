@@ -59,9 +59,11 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-row">
       <div
-        className={`${
-          isCollapsed ? "w-16" : "w-1/6"
-        } flex-shrink-0 h-screen bg-gray-900 border-r border-gray-800 transition-width duration-300 ease-in-out`}
+        className={` flex-shrink-0 h-screen border-r border-gray-800 transition-width duration-300 ease-in-out`}
+        style={{
+          backgroundColor: "#141414",
+          width: isCollapsed ? "52px" : "200px",
+        }}
       >
         <div className="flex items-center justify-between px-4 py-3">
           {!isCollapsed && (

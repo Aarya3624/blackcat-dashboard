@@ -4,4 +4,6 @@ Steps to demo:
 
 1. Clone this repository
 2. Run `npm install`
-3. RUn `npm run dev`
+3. Run `cd electron-app`
+4. Run `npm install`
+5. Run `npm start`

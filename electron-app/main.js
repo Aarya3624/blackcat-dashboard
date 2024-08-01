@@ -25,7 +25,7 @@ function createWindow() {
 }
 
 function startPythonScript() {
-  const scriptPath = path.join(__dirname, '../backend/people-counter/app.py');
+  const scriptPath = path.join(__dirname, '../backend/people-counter/app.py --input videos/example_01.mp4');
   pythonProcess = spawn('python', [scriptPath], { stdio: 'inherit' });
 
   pythonProcess.on('error', (error) => {

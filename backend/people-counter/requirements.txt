@@ -5,3 +5,10 @@ imutils
 dlib
 opencv-python
 scipy
+signal
+sys
+threading
+flask
+flask-cors
+logging
+itertools

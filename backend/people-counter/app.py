@@ -558,14 +558,19 @@ def add_camera():
         if not camera_id or not camera_link:
             return jsonify({"error": "Camera ID and link are required"}), 400
 
-        # Check if the camera link is live/connected properly
         if not is_valid_camera_link(camera_link):
             logging.debug(f"Camera {camera_id} link is invalid.")
             return jsonify({"error": "Invalid camera link"}), 400
 
-        # Add camera_id to the dictionary
-        output_frames[camera_id] = "Initial frame or any placeholder"
-        logging.debug(f"Camera {camera_id} added. Current output_frames: {output_frames}")
+        # Create a stop event for the camera
+        stop_events[camera_id] = threading.Event()
+
+        # Start the camera processing thread
+        camera_thread = threading.Thread(target=run_camera, args=(camera_id, camera_link))
+        camera_threads[camera_id] = camera_thread
+        camera_thread.start()
+
+        logging.debug(f"Camera {camera_id} thread started. Current threads: {camera_threads.keys()}")
 
         return jsonify({"message": f"Camera {camera_id} added successfully"}), 200
 

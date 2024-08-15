@@ -26,7 +26,7 @@ const ANPR = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAddCamera = (cameraId: any, cameraLink: any) => {
+  const handleAddCamera = (cameraId: string, cameraLink: string) => {
     axios
       .post("http://localhost:5000/add_camera", {
         camera_id: cameraId,
@@ -34,6 +34,10 @@ const ANPR = () => {
       })
       .then((response) => {
         console.log(response.data);
+        // Trigger a re-fetch of counts to ensure the new camera appears
+        axios.get("http://localhost:5000/count").then((response) => {
+          setCounts(response.data);
+        });
       })
       .catch((error) => {
         console.error("Error adding camera:", error);

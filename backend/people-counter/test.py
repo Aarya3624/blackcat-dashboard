@@ -9,41 +9,29 @@ import imutils
 from imutils.video import VideoStream, FPS
 from PIL import Image, ImageTk
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, simpledialog, messagebox
 from mylib.centroidtracker import CentroidTracker
 from mylib.trackableobject import TrackableObject
 
 # Global variables
-output_frame = None
+output_frames = {}
+camera_trackers = {}
 stop_event = threading.Event()
 lock = threading.Lock()
 
-# Tracker variables
-totalUp = 0
-totalDown = 0
-W = None
-H = None
-totalFrames = 0
-
-def run_video_processing():
-
+def run_video_processing(camera_id, video_source, update_counts):
     CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
-           "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
-           "dog", "horse", "motorbike", "person", "pottedplant",
-           "sheep", "sofa", "train", "tvmonitor"]
+               "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+               "dog", "horse", "motorbike", "person", "pottedplant",
+               "sheep", "sofa", "train", "tvmonitor"]
 
-
-    global output_frame, totalUp, totalDown, W, H, totalFrames
+    global output_frames, camera_trackers
 
     ap = argparse.ArgumentParser()
     ap.add_argument("-p", "--prototxt", required=False, default="./mobilenet_ssd/MobileNetSSD_deploy.prototxt",
                     help="path to Caffe 'deploy' prototxt file")
     ap.add_argument("-m", "--model", required=False, default="./mobilenet_ssd/MobileNetSSD_deploy.caffemodel",
                     help="path to Caffe pre-trained model")
-    ap.add_argument("-i", "--input", type=str,
-                    help="path to optional input video file")
-    ap.add_argument("-o", "--output", type=str,
-                    help="path to optional output video file")
     ap.add_argument("-c", "--confidence", type=float, default=0.4,
                     help="minimum probability to filter weak detections")
     ap.add_argument("-s", "--skip-frames", type=int, default=30,
@@ -54,22 +42,27 @@ def run_video_processing():
     net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
 
     # Start the video stream
-    if not args.get("input", False):
-        vs = VideoStream(src=0).start()
+    if isinstance(video_source, int):
+        vs = VideoStream(src=video_source).start()
         time.sleep(2.0)
     else:
-        vs = cv2.VideoCapture(args["input"])
+        vs = cv2.VideoCapture(video_source)
 
     # Initialize the centroid tracker and frame dimensions
     ct = CentroidTracker(maxDisappeared=40, maxDistance=50)
     trackers = []
     trackableObjects = {}
+    totalUp = 0
+    totalDown = 0
+    W = None
+    H = None
+    totalFrames = 0
 
     fps = FPS().start()
 
     while not stop_event.is_set():
         frame = vs.read()
-        frame = frame[1] if args.get("input", False) else frame
+        frame = frame[1] if not isinstance(video_source, int) else frame
 
         if frame is None:
             break
@@ -173,56 +166,89 @@ def run_video_processing():
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
 
         with lock:
-            output_frame = frame.copy()
+            output_frames[camera_id] = frame.copy()
 
         totalFrames += 1
         fps.update()
 
     fps.stop()
 
-    vs.stop() if not args.get("input", False) else vs.release()
+    vs.stop() if isinstance(video_source, int) else vs.release()
 
-def update_gui(canvas, img_label, count_label):
-    global output_frame, totalUp, totalDown
+    update_counts(camera_id, totalUp, totalDown)
+
+def update_gui(camera_id, img_label, count_label):
+    global output_frames, camera_trackers
 
     with lock:
-        if output_frame is not None:
-            frame = cv2.cvtColor(output_frame, cv2.COLOR_BGR2RGB)
+        if camera_id in output_frames:
+            frame = cv2.cvtColor(output_frames[camera_id], cv2.COLOR_BGR2RGB)
             img = Image.fromarray(frame)
             img_tk = ImageTk.PhotoImage(image=img)
             img_label.img_tk = img_tk  # Keep a reference
             img_label.configure(image=img_tk)
 
-    count_label.config(text=f"Entered: {totalDown}, Exited: {totalUp}")
-    canvas.after(10, update_gui, canvas, img_label, count_label)
+            if camera_id in camera_trackers:
+                count_label.config(text=f"Entered: {camera_trackers[camera_id]['down']}, Exited: {camera_trackers[camera_id]['up']}")
+
+    img_label.after(10, update_gui, camera_id, img_label, count_label)
 
 def start_gui():
     root = tk.Tk()
-    root.title("People Counter")
+    root.title("People Counter Dashboard")
+    root.geometry("1024x768")
 
-    canvas = tk.Canvas(root, width=600, height=400)
-    canvas.pack()
+    style = ttk.Style()
+    style.theme_use("clam")
+    style.configure("TButton", padding=6, relief="flat", background="#0078d7", foreground="#ffffff")
+    style.configure("TLabel", background="#f0f0f0", font=("Arial", 12))
+    style.configure("TFrame", background="#ffffff")
 
-    img_label = ttk.Label(canvas)
-    img_label.pack()
+    notebook = ttk.Notebook(root)
+    notebook.pack(expand=1, fill='both')
 
-    count_label = ttk.Label(root, text="Entered: 0, Exited: 0")
-    count_label.pack()
+    people_counter_tab = ttk.Frame(notebook)
+    notebook.add(people_counter_tab, text="People Counter")
 
-    # Start video processing in a separate thread
-    video_thread = threading.Thread(target=run_video_processing, daemon=True)
-    video_thread.start()
-
-    # Start GUI update loop
-    update_gui(canvas, img_label, count_label)
+    add_camera_button = ttk.Button(people_counter_tab, text="Add Camera", command=lambda: add_camera(notebook, people_counter_tab))
+    add_camera_button.pack(pady=10)
 
     root.mainloop()
 
-def signal_handler(sig, frame):
-    global stop_event
-    stop_event.set()
-    sys.exit(0)
+def add_camera(notebook, people_counter_tab):
+    camera_id = simpledialog.askstring("Camera ID", "Enter Camera ID:")
+    hall_number = simpledialog.askstring("Hall Number", "Enter Hall Number:")
+    camera_url = simpledialog.askstring("Camera URL", "Enter Camera URL:")
+
+    if camera_id and hall_number and camera_url:
+        camera_frame = ttk.Frame(notebook)
+        camera_frame.pack(fill="both", expand=True)
+
+        img_label = ttk.Label(camera_frame)
+        img_label.pack()
+
+        count_label = ttk.Label(camera_frame, text="Entered: 0, Exited: 0")
+        count_label.pack(pady=10)
+
+        # Add the camera_frame to the notebook
+        notebook.add(camera_frame, text=f"Camera {camera_id} - Hall {hall_number}")
+
+        camera_trackers[camera_id] = {"up": 0, "down": 0}
+
+        def update_counts(camera_id, total_up, total_down):
+            with lock:
+                camera_trackers[camera_id]["up"] = total_up
+                camera_trackers[camera_id]["down"] = total_down
+
+        # Start video processing in a separate thread
+        def start_processing():
+            threading.Thread(target=run_video_processing, args=(camera_id, camera_url, update_counts), daemon=True).start()
+            update_gui(camera_id, img_label, count_label)
+
+        start_processing()
+    else:
+        messagebox.showerror("Input Error", "All fields must be filled out.")
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal_handler)
     start_gui()
+

@@ -9,7 +9,7 @@ import imutils
 from imutils.video import VideoStream, FPS
 from PIL import Image, ImageTk
 import tkinter as tk
-from tkinter import ttk, simpledialog, messagebox
+from tkinter import ttk, messagebox
 from mylib.centroidtracker import CentroidTracker
 from mylib.trackableobject import TrackableObject
 
@@ -18,6 +18,7 @@ output_frames = {}
 camera_trackers = {}
 stop_event = threading.Event()
 lock = threading.Lock()
+PLACEHOLDER_IMAGE = "path_to_placeholder_image.png"  # Path to your placeholder image
 
 def run_video_processing(camera_id, video_source, update_counts):
     CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
@@ -27,28 +28,19 @@ def run_video_processing(camera_id, video_source, update_counts):
 
     global output_frames, camera_trackers
 
-    ap = argparse.ArgumentParser()
-    ap.add_argument("-p", "--prototxt", required=False, default="./mobilenet_ssd/MobileNetSSD_deploy.prototxt",
-                    help="path to Caffe 'deploy' prototxt file")
-    ap.add_argument("-m", "--model", required=False, default="./mobilenet_ssd/MobileNetSSD_deploy.caffemodel",
-                    help="path to Caffe pre-trained model")
-    ap.add_argument("-c", "--confidence", type=float, default=0.4,
-                    help="minimum probability to filter weak detections")
-    ap.add_argument("-s", "--skip-frames", type=int, default=30,
-                    help="# of skip frames between detections")
-    args = vars(ap.parse_args())
+    prototxt = "./mobilenet_ssd/MobileNetSSD_deploy.prototxt"
+    model = "./mobilenet_ssd/MobileNetSSD_deploy.caffemodel"
+    confidence_threshold = 0.4
+    skip_frames = 30
 
-    # Load the serialized model from disk
-    net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
+    net = cv2.dnn.readNetFromCaffe(prototxt, model)
 
-    # Start the video stream
     if isinstance(video_source, int):
         vs = VideoStream(src=video_source).start()
         time.sleep(2.0)
     else:
         vs = cv2.VideoCapture(video_source)
 
-    # Initialize the centroid tracker and frame dimensions
     ct = CentroidTracker(maxDisappeared=40, maxDistance=50)
     trackers = []
     trackableObjects = {}
@@ -65,7 +57,12 @@ def run_video_processing(camera_id, video_source, update_counts):
         frame = frame[1] if not isinstance(video_source, int) else frame
 
         if frame is None:
-            break
+            frame = np.zeros((150, 200, 3), dtype=np.uint8)  # Placeholder size
+            frame[:] = (255, 0, 0)  # Red background to indicate an error
+            cv2.putText(frame, "No video feed", (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            with lock:
+                output_frames[camera_id] = frame
+            continue
 
         frame = imutils.resize(frame, width=500)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -76,7 +73,7 @@ def run_video_processing(camera_id, video_source, update_counts):
         status = "Waiting"
         rects = []
 
-        if totalFrames % args["skip_frames"] == 0:
+        if totalFrames % skip_frames == 0:
             status = "Detecting"
             trackers = []
 
@@ -87,7 +84,7 @@ def run_video_processing(camera_id, video_source, update_counts):
             for i in np.arange(0, detections.shape[2]):
                 confidence = detections[0, 0, i, 2]
 
-                if confidence > args["confidence"]:
+                if confidence > confidence_threshold:
                     idx = int(detections[0, 0, i, 1])
 
                     if CLASSES[idx] != "person":
@@ -145,26 +142,6 @@ def run_video_processing(camera_id, video_source, update_counts):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
             cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 0, 255), -1)
 
-        info = [
-            ("Exited", totalUp),
-            ("Entered", totalDown),
-            ("Status", status),
-        ]
-
-        info2 = [
-            ("Total people inside", totalDown - totalUp),
-        ]
-
-        for (i, (k, v)) in enumerate(info):
-            text = "{}: {}".format(k, v)
-            cv2.putText(frame, text, (10, H - ((i * 20) + 20)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-
-        for (i, (k, v)) in enumerate(info2):
-            text = "{}: {}".format(k, v)
-            cv2.putText(frame, text, (265, H - ((i * 20) + 60)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
-
         with lock:
             output_frames[camera_id] = frame.copy()
 
@@ -196,7 +173,7 @@ def update_gui(camera_id, img_label, count_label):
 def start_gui():
     root = tk.Tk()
     root.title("People Counter Dashboard")
-    root.geometry("1024x768")
+    root.geometry("1200x800")
 
     style = ttk.Style()
     style.theme_use("clam")
@@ -208,47 +185,92 @@ def start_gui():
     notebook.pack(expand=1, fill='both')
 
     people_counter_tab = ttk.Frame(notebook)
-    notebook.add(people_counter_tab, text="People Counter")
+    notebook.add(people_counter_tab, text="Add Cameras")
 
-    add_camera_button = ttk.Button(people_counter_tab, text="Add Camera", command=lambda: add_camera(notebook, people_counter_tab))
+    # Create input fields for Camera ID, Hall Number, and Camera URL
+    camera_id_label = ttk.Label(people_counter_tab, text="Camera ID:")
+    camera_id_label.pack(pady=5)
+    camera_id_entry = ttk.Entry(people_counter_tab)
+    camera_id_entry.pack(pady=5)
+
+    hall_number_label = ttk.Label(people_counter_tab, text="Hall Number:")
+    hall_number_label.pack(pady=5)
+    hall_number_entry = ttk.Entry(people_counter_tab)
+    hall_number_entry.pack(pady=5)
+
+    camera_url_label = ttk.Label(people_counter_tab, text="Camera URL:")
+    camera_url_label.pack(pady=5)
+    camera_url_entry = ttk.Entry(people_counter_tab)
+    camera_url_entry.pack(pady=5)
+
+    def add_camera():
+        camera_id = camera_id_entry.get().strip()
+        hall_number = hall_number_entry.get().strip()
+        camera_url = camera_url_entry.get().strip()
+
+        if not camera_id or not hall_number or not camera_url:
+            messagebox.showerror("Input Error", "All fields are required.")
+            return
+
+        try:
+            camera_id = int(camera_id)
+        except ValueError:
+            messagebox.showerror("Input Error", "Camera ID must be a number.")
+            return
+
+        if camera_id in camera_trackers:
+            messagebox.showerror("Error", f"Camera ID {camera_id} already exists.")
+            return
+
+        hall_tab = None
+        for tab in notebook.tabs():
+            if notebook.tab(tab, "text") == f"Hall {hall_number}":
+                hall_tab = tab
+                break
+
+        if hall_tab is None:
+            hall_tab = ttk.Frame(notebook)
+            notebook.add(hall_tab, text=f"Hall {hall_number}")
+
+        hall_frame = notebook.nametowidget(hall_tab)
+        camera_count = len(hall_frame.winfo_children())
+
+        # Define the grid layout
+        rows = 2
+        cols = 3
+        row = camera_count // cols
+        col = camera_count % cols
+
+        new_camera_frame = ttk.Frame(hall_frame, width=200, height=150)
+        new_camera_frame.grid(row=row, column=col, padx=5, pady=5, sticky='nsew')
+
+        new_camera_label = ttk.Label(new_camera_frame, text=f"Camera {camera_id} - Hall {hall_number}")
+        new_camera_label.pack(side="top")
+
+        new_camera_img_label = ttk.Label(new_camera_frame)
+        new_camera_img_label.pack(side="left", expand=True, fill="both")
+
+        camera_trackers[camera_id] = {'up': 0, 'down': 0}
+
+        def update_counts(camera_id, up, down):
+            camera_trackers[camera_id]['up'] = up
+            camera_trackers[camera_id]['down'] = down
+
+        camera_thread = threading.Thread(target=run_video_processing, args=(camera_id, camera_url, update_counts))
+        camera_thread.start()
+
+        update_gui(camera_id, new_camera_img_label, new_camera_img_label)
+
+    add_camera_button = ttk.Button(people_counter_tab, text="Add Camera", command=add_camera)
     add_camera_button.pack(pady=10)
 
+    def on_closing():
+        stop_event.set()
+        root.destroy()
+        sys.exit()
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
-
-def add_camera(notebook, people_counter_tab):
-    camera_id = simpledialog.askstring("Camera ID", "Enter Camera ID:")
-    hall_number = simpledialog.askstring("Hall Number", "Enter Hall Number:")
-    camera_url = simpledialog.askstring("Camera URL", "Enter Camera URL:")
-
-    if camera_id and hall_number and camera_url:
-        camera_frame = ttk.Frame(notebook)
-        camera_frame.pack(fill="both", expand=True)
-
-        img_label = ttk.Label(camera_frame)
-        img_label.pack()
-
-        count_label = ttk.Label(camera_frame, text="Entered: 0, Exited: 0")
-        count_label.pack(pady=10)
-
-        # Add the camera_frame to the notebook
-        notebook.add(camera_frame, text=f"Camera {camera_id} - Hall {hall_number}")
-
-        camera_trackers[camera_id] = {"up": 0, "down": 0}
-
-        def update_counts(camera_id, total_up, total_down):
-            with lock:
-                camera_trackers[camera_id]["up"] = total_up
-                camera_trackers[camera_id]["down"] = total_down
-
-        # Start video processing in a separate thread
-        def start_processing():
-            threading.Thread(target=run_video_processing, args=(camera_id, camera_url, update_counts), daemon=True).start()
-            update_gui(camera_id, img_label, count_label)
-
-        start_processing()
-    else:
-        messagebox.showerror("Input Error", "All fields must be filled out.")
 
 if __name__ == "__main__":
     start_gui()
-

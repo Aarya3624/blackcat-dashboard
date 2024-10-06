@@ -1,0 +1,2 @@
+2024-08-18 18:13:32 - Camera 1: Person exited in Hall 1
+2024-10-06 17:03:19 - Camera 3: Person exited in Hall 1

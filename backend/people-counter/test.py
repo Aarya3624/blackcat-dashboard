@@ -9,11 +9,14 @@ import imutils
 from imutils.video import VideoStream, FPS
 from PIL import Image, ImageTk
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from mylib.centroidtracker import CentroidTracker
 from mylib.trackableobject import TrackableObject
 import logging
 from datetime import datetime
+import csv
+from tkcalendar import DateEntry
+from datetime import time
 
 # Global variables
 output_frames = {}
@@ -23,13 +26,90 @@ lock = threading.Lock()
 PLACEHOLDER_IMAGE = "path_to_placeholder_image.png"  # Path to your placeholder image
 
 # Set up logging
-logging.basicConfig(filename='hall_log.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+def log_to_csv(camera_id, hall_id, timestamp, entered, exited):
+    with open('hall_log.csv', 'a', newline='') as csvfile:
+        fieldnames = ['camera_id', 'hall_id', 'timestamp', 'entered', 'exited']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        # Check if the file is empty, if so, write the header
+        if csvfile.tell() == 0:
+            writer.writeheader()
+        writer.writerow({'camera_id': camera_id, 'hall_id': hall_id, 'timestamp': timestamp, 'entered': entered, 'exited': exited})
 
-def run_video_processing(camera_id, video_source, update_counts):
+def download_log(hall_number):
+    def download():
+        try:
+            start_date = start_date_entry.get_date()
+            start_time_obj = time(hour=int(start_hour_var.get()), minute=int(start_minute_var.get()))
+            start_time = datetime.combine(start_date, start_time_obj)
+
+            end_date = end_date_entry.get_date()
+            end_time_obj = time(hour=int(end_hour_var.get()), minute=int(end_minute_var.get()))
+            end_time = datetime.combine(end_date, end_time_obj)
+
+            file_path = filedialog.asksaveasfilename(defaultextension=".csv")
+            if not file_path:
+                return  # User canceled
+
+            with open(file_path, 'w', newline='') as csvfile:
+                fieldnames = ['camera_id', 'hall_id', 'timestamp', 'entered', 'exited']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+
+                with open('hall_log.csv', 'r') as main_logfile:
+                    reader = csv.DictReader(main_logfile)
+                    for row in reader:
+                        timestamp = datetime.strptime(row['timestamp'], "%Y-%m-%d %H:%M:%S")
+                        if start_time <= timestamp <= end_time:
+                            writer.writerow(row)
+
+            messagebox.showinfo("Download Complete", "Log downloaded successfully!")
+        except ValueError:
+            messagebox.showerror("Error", "Invalid date/time format.")
+
+    download_window = tk.Toplevel()
+    download_window.title("Download Log")
+
+    # Start Date
+    start_date_label = ttk.Label(download_window, text="Start Date:")
+    start_date_label.grid(row=0, column=0, padx=5, pady=5)
+    start_date_entry = DateEntry(download_window, width=12, background='darkblue', foreground='white', borderwidth=2)
+    start_date_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    # Start Time
+    start_hour_var = tk.StringVar(value="00")
+    start_minute_var = tk.StringVar(value="00")
+    ttk.Label(download_window, text="Start Time:").grid(row=1, column=0, padx=5, pady=5)
+    start_hour_spinbox = ttk.Spinbox(download_window, from_=0, to=23, textvariable=start_hour_var, width=3)
+    start_hour_spinbox.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+    ttk.Label(download_window, text=":").grid(row=1, column=2, pady=5)
+    start_minute_spinbox = ttk.Spinbox(download_window, from_=0, to=59, textvariable=start_minute_var, width=3)
+    start_minute_spinbox.grid(row=1, column=3, padx=5, pady=5, sticky="w")
+
+    # End Date
+    end_date_label = ttk.Label(download_window, text="End Date:")
+    end_date_label.grid(row=2, column=0, padx=5, pady=5)
+    end_date_entry = DateEntry(download_window, width=12, background='darkblue', foreground='white', borderwidth=2)
+    end_date_entry.grid(row=2, column=1, padx=5, pady=5)
+
+    # End Time
+    end_hour_var = tk.StringVar(value="23")
+    end_minute_var = tk.StringVar(value="59")
+    ttk.Label(download_window, text="End Time:").grid(row=3, column=0, padx=5, pady=5)
+    end_hour_spinbox = ttk.Spinbox(download_window, from_=0, to=23, textvariable=end_hour_var, width=3)
+    end_hour_spinbox.grid(row=3, column=1, padx=5, pady=5, sticky="w")
+    ttk.Label(download_window, text=":").grid(row=3, column=2, pady=5)
+    end_minute_spinbox = ttk.Spinbox(download_window, from_=0, to=59, textvariable=end_minute_var, width=3)
+    end_minute_spinbox.grid(row=3, column=3, padx=5, pady=5, sticky="w")
+
+    download_button = ttk.Button(download_window, text="Download", command=download)
+    download_button.grid(row=4, column=0, columnspan=4, pady=10)
+
+def run_video_processing(camera_id, hall_id, video_source, update_counts):
     CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
                "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
                "dog", "horse", "motorbike", "person", "pottedplant",
                "sheep", "sofa", "train", "tvmonitor"]
+
 
     global output_frames, camera_trackers
 
@@ -74,15 +154,15 @@ def run_video_processing(camera_id, video_source, update_counts):
 
         if W is None or H is None:
             (H, W) = frame.shape[:2]
-
-        status = "Waiting"
-        rects = []
+            status = "Waiting"
+            rects = []
 
         if totalFrames % skip_frames == 0:
             status = "Detecting"
             trackers = []
 
-            blob = cv2.dnn.blobFromImage(frame, 0.007843, (W, H), 127.5)
+            blob = cv2.dnn.blobFromImage(frame, 0.007843,
+ (W, H), 127.5)
             net.setInput(blob)
             detections = net.forward()
 
@@ -92,7 +172,7 @@ def run_video_processing(camera_id, video_source, update_counts):
                 if confidence > confidence_threshold:
                     idx = int(detections[0, 0, i, 1])
 
-                    if CLASSES[idx] != "person":
+                    if CLASSES[idx]!= "person":
                         continue
 
                     box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
@@ -116,8 +196,10 @@ def run_video_processing(camera_id, video_source, update_counts):
 
                 rects.append((startX, startY, endX, endY))
 
-        cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 0), 3)
-        cv2.putText(frame, "-Prediction border - Entrance-", (10, H - 50),
+        cv2.line(frame, (0,
+ H // 2), (W, H // 2), (0, 0, 0), 3)
+        cv2.putText(frame, "-Prediction border - Entrance-", (10,
+ H - 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
         objects = ct.update(rects)
@@ -126,6 +208,7 @@ def run_video_processing(camera_id, video_source, update_counts):
             to = trackableObjects.get(objectID, None)
 
             if to is None:
+
                 to = TrackableObject(objectID, centroid)
             else:
                 y = [c[1] for c in to.centroids]
@@ -137,19 +220,20 @@ def run_video_processing(camera_id, video_source, update_counts):
                         totalUp += 1
                         to.counted = True
                         # Log entry
-                        logging.info(f"Camera ID {camera_id} - Entered")
+                        log_to_csv(camera_id, hall_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 1, 0)  # Log to CSV
                     elif direction > 0 and centroid[1] > H // 2:
                         totalDown += 1
                         to.counted = True
                         # Log exit
-                        logging.info(f"Camera ID {camera_id} - Exited")
+                        log_to_csv(camera_id, hall_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 0, 1)  # Log to CSV
 
             trackableObjects[objectID] = to
 
             text = "ID {}".format(objectID)
             cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 0, 255), -1)
+            cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 0, 255),
+ -1)
 
         # Overlay entered and exited counts inside the video
         cv2.putText(frame, f"Entered: {totalDown}", (10, H - 30),
@@ -168,6 +252,7 @@ def run_video_processing(camera_id, video_source, update_counts):
     vs.stop() if isinstance(video_source, int) else vs.release()
 
     update_counts(camera_id, totalUp, totalDown)
+
 
 def update_gui(camera_id, img_label):
     global output_frames
@@ -325,6 +410,10 @@ def start_gui():
         camera_thread.start()
 
         update_gui(camera_id, new_camera_img_label)
+
+        # Add download button for the hall
+        download_button = ttk.Button(hall_frame, text="Download Log", command=lambda: download_log(hall_number))
+        download_button.grid(row=camera_count // 3 + 2, column=0, columnspan=3, pady=10)
 
     def log_event(hall_number, camera_id, event_type):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

@@ -16,7 +16,8 @@ import logging
 from datetime import datetime
 import csv
 from tkcalendar import DateEntry
-from datetime import time
+import datetime
+import time
 
 # Global variables
 output_frames = {}
@@ -26,30 +27,37 @@ lock = threading.Lock()
 PLACEHOLDER_IMAGE = "path_to_placeholder_image.png"  # Path to your placeholder image
 
 logging.basicConfig(filename='app.log', level=logging.INFO,
-format='%(asctime)s - %(levelname)s - %(message)s')
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Set up logging
+
+
 def log_to_csv(camera_id, hall_id, timestamp, entered, exited):
     try:
         with open('hall_log.csv', 'a', newline='') as csvfile:
-            fieldnames = ['camera_id', 'hall_id', 'timestamp', 'entered', 'exited']
+            fieldnames = ['camera_id', 'hall_id',
+                          'timestamp', 'entered', 'exited']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             # Check if the file is empty, if so, write the header
             if csvfile.tell() == 0:
                 writer.writeheader()
-            writer.writerow({'camera_id': camera_id, 'hall_id': hall_id, 'timestamp': timestamp, 'entered': entered, 'exited': exited})
+            writer.writerow({'camera_id': camera_id, 'hall_id': hall_id, 'timestamp': timestamp,
+                            'entered': entered, 'exited': exited})
     except IOError as e:
         logging.error(f"Failed to log to CSV: {e}")
+
 
 def download_log(hall_number):
     def download():
         try:
             start_date = start_date_entry.get_date()
-            start_time_obj = time(hour=int(start_hour_var.get()), minute=int(start_minute_var.get()))
+            start_time_obj = datetime.time(
+                hour=int(start_hour_var.get()), minute=int(start_minute_var.get()))
             start_time = datetime.combine(start_date, start_time_obj)
 
             end_date = end_date_entry.get_date()
-            end_time_obj = time(hour=int(end_hour_var.get()), minute=int(end_minute_var.get()))
+            end_time_obj = datetime.time(
+                hour=int(end_hour_var.get()), minute=int(end_minute_var.get()))
             end_time = datetime.combine(end_date, end_time_obj)
 
             file_path = filedialog.asksaveasfilename(defaultextension=".csv")
@@ -57,18 +65,21 @@ def download_log(hall_number):
                 return  # User canceled
 
             with open(file_path, 'w', newline='') as csvfile:
-                fieldnames = ['camera_id', 'hall_id', 'timestamp', 'entered', 'exited']
+                fieldnames = ['camera_id', 'hall_id',
+                              'timestamp', 'entered', 'exited']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
 
                 with open('hall_log.csv', 'r') as main_logfile:
                     reader = csv.DictReader(main_logfile)
                     for row in reader:
-                        timestamp = datetime.strptime(row['timestamp'], "%Y-%m-%d %H:%M:%S")
+                        timestamp = datetime.strptime(
+                            row['timestamp'], "%Y-%m-%d %H:%M:%S")
                         if start_time <= timestamp <= end_time:
                             writer.writerow(row)
 
-            messagebox.showinfo("Download Complete", "Log downloaded successfully!")
+            messagebox.showinfo("Download Complete",
+                                "Log downloaded successfully!")
         except ValueError:
             messagebox.showerror("Error", "Invalid date/time format.")
         except Exception as e:
@@ -82,54 +93,65 @@ def download_log(hall_number):
     # Start Date
     start_date_label = ttk.Label(download_window, text="Start Date:")
     start_date_label.grid(row=0, column=0, padx=5, pady=5)
-    start_date_entry = DateEntry(download_window, width=12, background='darkblue', foreground='white', borderwidth=2)
+    start_date_entry = DateEntry(download_window, width=12, background='darkblue',
+                                 foreground='white', borderwidth=2)
     start_date_entry.grid(row=0, column=1, padx=5, pady=5)
 
     # Start Time
     start_hour_var = tk.StringVar(value="00")
     start_minute_var = tk.StringVar(value="00")
-    ttk.Label(download_window, text="Start Time:").grid(row=1, column=0, padx=5, pady=5)
-    start_hour_spinbox = ttk.Spinbox(download_window, from_=0, to=23, textvariable=start_hour_var, width=3)
+    ttk.Label(download_window, text="Start Time:").grid(
+        row=1, column=0, padx=5, pady=5)
+    start_hour_spinbox = ttk.Spinbox(
+        download_window, from_=0, to=23, textvariable=start_hour_var, width=3)
     start_hour_spinbox.grid(row=1, column=1, padx=5, pady=5, sticky="w")
     ttk.Label(download_window, text=":").grid(row=1, column=2, pady=5)
-    start_minute_spinbox = ttk.Spinbox(download_window, from_=0, to=59, textvariable=start_minute_var, width=3)
+    start_minute_spinbox = ttk.Spinbox(
+        download_window, from_=0, to=59, textvariable=start_minute_var, width=3)
     start_minute_spinbox.grid(row=1, column=3, padx=5, pady=5, sticky="w")
 
     # End Date
     end_date_label = ttk.Label(download_window, text="End Date:")
     end_date_label.grid(row=2, column=0, padx=5, pady=5)
-    end_date_entry = DateEntry(download_window, width=12, background='darkblue', foreground='white', borderwidth=2)
+    end_date_entry = DateEntry(download_window, width=12, background='darkblue',
+                               foreground='white', borderwidth=2)
     end_date_entry.grid(row=2, column=1, padx=5, pady=5)
 
     # End Time
     end_hour_var = tk.StringVar(value="23")
     end_minute_var = tk.StringVar(value="59")
-    ttk.Label(download_window, text="End Time:").grid(row=3, column=0, padx=5, pady=5)
-    end_hour_spinbox = ttk.Spinbox(download_window, from_=0, to=23, textvariable=end_hour_var, width=3)
+    ttk.Label(download_window, text="End Time:").grid(
+        row=3, column=0, padx=5, pady=5)
+    end_hour_spinbox = ttk.Spinbox(
+        download_window, from_=0, to=23, textvariable=end_hour_var, width=3)
     end_hour_spinbox.grid(row=3, column=1, padx=5, pady=5, sticky="w")
     ttk.Label(download_window, text=":").grid(row=3, column=2, pady=5)
-    end_minute_spinbox = ttk.Spinbox(download_window, from_=0, to=59, textvariable=end_minute_var, width=3)
+    end_minute_spinbox = ttk.Spinbox(
+        download_window, from_=0, to=59, textvariable=end_minute_var, width=3)
     end_minute_spinbox.grid(row=3, column=3, padx=5, pady=5, sticky="w")
 
-    download_button = ttk.Button(download_window, text="Download", command=download)
+    download_button = ttk.Button(
+        download_window, text="Download", command=download)
     download_button.grid(row=4, column=0, columnspan=4, pady=10)
 
 
 def log_event(hall_number, camera_id, event_type):
     try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.time.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"{timestamp} - Camera {camera_id}: {event_type} in Hall {hall_number}"
-        
+
         log_file_path = f"hall_{hall_number}_log.txt"
         with open(log_file_path, "a") as log_file:
             log_file.write(log_entry + "\n")
 
         if hall_number in hall_logs:
             hall_logs[hall_number].append(log_entry)
-            hall_log_labels[hall_number].configure(text="\n".join(hall_logs[hall_number]))
+            hall_log_labels[hall_number].configure(
+                text="\n".join(hall_logs[hall_number]))
 
     except Exception as e:
-        logging.error(f"Failed to log event for hall {hall_number}: {e}")
+        logging.error(
+            f"Failed to log event for hall {hall_number}: {e}")
 
 
 def run_video_processing(camera_id, hall_id, video_source, update_counts):
@@ -138,16 +160,16 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
                "dog", "horse", "motorbike", "person", "pottedplant",
                "sheep", "sofa", "train", "tvmonitor"]
 
-
     global output_frames, camera_trackers
 
     prototxt = "./mobilenet_ssd/MobileNetSSD_deploy.prototxt"
     model = "./mobilenet_ssd/MobileNetSSD_deploy.caffemodel"
-    confidence_threshold = 0.5  # Increased threshold
-    skip_frames = 60  # Increased skip frames
+    confidence_threshold = 0.4
+    skip_frames = 30
 
     net = cv2.dnn.readNetFromCaffe(prototxt, model)
 
+    # Determine if the video source is a webcam or an RTSP URL
     try:
         # Try converting video_source to an integer (for webcams)
         video_source = int(video_source)
@@ -175,12 +197,13 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
         if frame is None:
             frame = np.zeros((150, 200, 3), dtype=np.uint8)  # Placeholder size
             frame[:] = (255, 0, 0)  # Red background to indicate an error
-            cv2.putText(frame, "No video feed", (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.putText(frame, "No video feed", (10, 75),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
             with lock:
                 output_frames[camera_id] = frame
             continue
 
-        frame = imutils.resize(frame, width=400)
+        frame = imutils.resize(frame, width=500)
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         if W is None or H is None:
@@ -191,22 +214,25 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
         if totalFrames % skip_frames == 0:
             status = "Detecting"
             trackers = []
+            rects = []
 
-            blob = cv2.dnn.blobFromImage(frame, 0.007843,
- (W, H), 127.5)
+            blob = cv2.dnn.blobFromImage(
+                frame, 0.007843, (W, H), 127.5)
             net.setInput(blob)
             detections = net.forward()
 
+            rects = []
             for i in np.arange(0, detections.shape[2]):
                 confidence = detections[0, 0, i, 2]
 
                 if confidence > confidence_threshold:
                     idx = int(detections[0, 0, i, 1])
 
-                    if CLASSES[idx]!= "person":
+                    if CLASSES[idx] != "person":
                         continue
 
-                    box = detections[0, 0, i, 3:7] * np.array([W, H, W, H])
+                    box = detections[0, 0, i, 3:7] * \
+                        np.array([W, H, W, H])
                     (startX, startY, endX, endY) = box.astype("int")
 
                     tracker = dlib.correlation_tracker()
@@ -215,8 +241,8 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
 
                     trackers.append(tracker)
         else:
+            status = "Tracking"
             for tracker in trackers:
-                status = "Tracking"
                 tracker.update(rgb)
                 pos = tracker.get_position()
 
@@ -227,10 +253,8 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
 
                 rects.append((startX, startY, endX, endY))
 
-        cv2.line(frame, (0,
- H // 2), (W, H // 2), (0, 0, 0), 3)
-        cv2.putText(frame, "-Prediction border - Entrance-", (10,
- H - 50),
+        cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 0), 3)
+        cv2.putText(frame, "-Prediction border - Entrance-", (10, H - 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
         objects = ct.update(rects)
@@ -239,7 +263,6 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
             to = trackableObjects.get(objectID, None)
 
             if to is None:
-
                 to = TrackableObject(objectID, centroid)
             else:
                 y = [c[1] for c in to.centroids]
@@ -251,20 +274,22 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
                         totalUp += 1
                         to.counted = True
                         # Log entry
-                        log_to_csv(camera_id, hall_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 1, 0)  # Log to CSV
+                        log_to_csv(camera_id, hall_id, datetime.now().strftime(
+                            "%Y-%m-%d %H:%M:%S"), 1, 0)  # Log to CSV
                     elif direction > 0 and centroid[1] > H // 2:
                         totalDown += 1
                         to.counted = True
                         # Log exit
-                        log_to_csv(camera_id, hall_id, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 0, 1)  # Log to CSV
+                        log_to_csv(camera_id, hall_id, datetime.now().strftime(
+                            "%Y-%m-%d %H:%M:%S"), 0, 1)  # Log to CSV
 
             trackableObjects[objectID] = to
 
             text = "ID {}".format(objectID)
             cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 0, 255),
- -1)
+            cv2.circle(frame, (centroid[0], centroid[1]),
+                       4, (0, 0, 255), -1)
 
         # Overlay entered and exited counts inside the video
         cv2.putText(frame, f"Entered: {totalDown}", (10, H - 30),
@@ -285,7 +310,7 @@ def run_video_processing(camera_id, hall_id, video_source, update_counts):
     update_counts(camera_id, totalUp, totalDown)
 
 
-def update_gui(camera_id, img_label):
+def update_gui(camera_id, img_label, count_label):
     global output_frames
 
     with lock:
@@ -296,14 +321,20 @@ def update_gui(camera_id, img_label):
             img_label.img_tk = img_tk  # Keep a reference
             img_label.configure(image=img_tk)
 
-    img_label.after(10, update_gui, camera_id, img_label)
+            if camera_id in camera_trackers:
+                count_label.config(text=f"Entered: {camera_trackers[camera_id]['down']}, Exited: {camera_trackers[camera_id]['up']}")
+
+    img_label.after(10, update_gui, camera_id, img_label, count_label)
+
 
 def signal_handler(sig, frame):
     logging.info("Signal received, shutting down...")
     stop_event.set()
     sys.exit(0)
 
+
 signal.signal(signal.SIGINT, signal_handler)
+
 
 def start_gui():
     root = tk.Tk()
@@ -315,27 +346,27 @@ def start_gui():
     style.theme_use("clam")
 
     # Style configurations for dark mode and glassy effect
-    style.configure("TButton", 
-                    padding=8, 
-                    relief="flat", 
-                    background="#3A3A3A", 
-                    foreground="#FFFFFF", 
+    style.configure("TButton",
+                    padding=8,
+                    relief="flat",
+                    background="#3A3A3A",
+                    foreground="#FFFFFF",
                     font=("Arial", 12),
                     borderwidth=0)
     style.map("TButton",
               background=[("active", "#555555")])
 
-    style.configure("TLabel", 
-                    background="#2E2E2E", 
-                    foreground="#FFFFFF", 
+    style.configure("TLabel",
+                    background="#2E2E2E",
+                    foreground="#FFFFFF",
                     font=("Arial", 12))
 
-    style.configure("TFrame", 
+    style.configure("TFrame",
                     background="#2E2E2E")
 
     style.configure("TNotebook",
-                    background="#2E2E2E", 
-                    borderwidth=0, 
+                    background="#2E2E2E",
+                    borderwidth=0,
                     font=("Arial", 12))
 
     style.configure("TNotebook.Tab",
@@ -352,29 +383,35 @@ def start_gui():
     header_frame = ttk.Frame(root, padding=(10, 5), style="TFrame")
     header_frame.pack(fill='x', padx=10, pady=10)
 
-    header_label = ttk.Label(header_frame, text="People Counter Dashboard", font=("Arial", 16, "bold"))
+    header_label = ttk.Label(header_frame, text="People Counter Dashboard",
+                             font=("Arial", 16, "bold"))
     header_label.pack()
 
-    instructions_label = ttk.Label(header_frame, text="Add cameras to track people count in different halls.", font=("Arial", 12))
+    instructions_label = ttk.Label(
+        header_frame, text="Add cameras to track people count in different halls.", font=("Arial", 12))
     instructions_label.pack()
 
     # Camera setup frame
     setup_frame = ttk.Frame(root, padding=(10, 5), style="TFrame")
     setup_frame.pack(fill='x', padx=10, pady=10)
 
-    ttk.Label(setup_frame, text="Camera ID:").grid(row=0, column=0, padx=5, pady=5)
+    ttk.Label(setup_frame, text="Camera ID:").grid(
+        row=0, column=0, padx=5, pady=5)
     camera_id_entry = ttk.Entry(setup_frame)
     camera_id_entry.grid(row=0, column=1, padx=5, pady=5)
 
-    ttk.Label(setup_frame, text="Hall Number:").grid(row=1, column=0, padx=5, pady=5)
+    ttk.Label(setup_frame, text="Hall Number:").grid(
+        row=1, column=0, padx=5, pady=5)
     hall_number_entry = ttk.Entry(setup_frame)
     hall_number_entry.grid(row=1, column=1, padx=5, pady=5)
 
-    ttk.Label(setup_frame, text="Camera URL/Index:").grid(row=2, column=0, padx=5, pady=5)
+    ttk.Label(setup_frame, text="Camera URL/Index:").grid(
+        row=2, column=0, padx=5, pady=5)
     camera_url_entry = ttk.Entry(setup_frame)
     camera_url_entry.grid(row=2, column=1, padx=5, pady=5)
 
-    add_camera_button = ttk.Button(setup_frame, text="Add Camera", command=lambda: add_camera(camera_id_entry, hall_number_entry, camera_url_entry))
+    add_camera_button = ttk.Button(setup_frame, text="Add Camera", command=lambda: add_camera(
+        camera_id_entry, hall_number_entry, camera_url_entry))
     add_camera_button.grid(row=3, column=0, columnspan=2, pady=10)
 
     # Notebook for halls
@@ -397,7 +434,8 @@ def start_gui():
             return
 
         if camera_id in camera_trackers:
-            messagebox.showerror("Error", f"Camera ID {camera_id} already exists.")
+            messagebox.showerror(
+                "Error", f"Camera ID {camera_id} already exists.")
             return
 
         hall_tab = None
@@ -419,22 +457,30 @@ def start_gui():
         row = camera_count // cols
         col = camera_count % cols
 
-        new_camera_frame = ttk.Frame(hall_frame, width=250, height=200, padding=5, style="TFrame")
-        new_camera_frame.grid(row=row, column=col, padx=5, pady=5, sticky='nsew')
+        new_camera_frame = ttk.Frame(
+            hall_frame, width=250, height=200, padding=5, style="TFrame")
+        new_camera_frame.grid(row=row, column=col, padx=5,
+                              pady=5, sticky='nsew')
 
-        new_camera_label = ttk.Label(new_camera_frame, text=f"Camera {camera_id} - Hall {hall_number}", font=("Arial", 12, "bold"))
+        new_camera_label = ttk.Label(new_camera_frame, text=f"Camera {camera_id} - Hall {hall_number}",
+                                     font=("Arial", 12, "bold"))
         new_camera_label.pack(side="top", pady=(0, 5))
 
         new_camera_img_label = ttk.Label(new_camera_frame)
         new_camera_img_label.pack(side="left", expand=True, fill="both")
+
+        count_label = ttk.Label(new_camera_frame, text="", font=("Arial", 10))
+        count_label.pack(side="top", pady=(0, 5))
 
         camera_trackers[camera_id] = {'up': 0, 'down': 0}
 
         # Initialize logging for the hall
         if hall_number not in hall_logs:
             hall_logs[hall_number] = []
-            hall_log_label = ttk.Label(hall_frame, text="", font=("Arial", 10), background="#2E2E2E", foreground="#FFFFFF", anchor="w")
-            hall_log_label.grid(row=camera_count // cols + 1, column=0, columnspan=cols, padx=5, pady=5, sticky='w')
+            hall_log_label = ttk.Label(hall_frame, text="", font=("Arial", 10), background="#2E2E2E",
+                                       foreground="#FFFFFF", anchor="w")
+            hall_log_label.grid(row=camera_count // cols + 1, column=0,
+                                columnspan=cols, padx=5, pady=5, sticky='w')
             hall_log_labels[hall_number] = hall_log_label
 
         def update_counts(camera_id, up, down):
@@ -442,36 +488,43 @@ def start_gui():
             camera_trackers[camera_id]['down'] = down
 
             # Update the logs for the relevant hall
-            log_event(hall_number, camera_id, "Person entered" if down > camera_trackers[camera_id]['down'] else "Person exited")
+            log_event(hall_number, camera_id, "Person entered" if down >
+                      camera_trackers[camera_id]['down'] else "Person exited")
 
-        camera_thread = threading.Thread(target=run_video_processing, args=(camera_id, hall_number, camera_url, update_counts))
+        camera_thread = threading.Thread(
+            target=run_video_processing, args=(camera_id, hall_number, camera_url, update_counts))
         camera_thread.start()
 
-        update_gui(camera_id, new_camera_img_label)
+        update_gui(camera_id, new_camera_img_label, count_label)
 
         # Add download button for the hall
-        download_button = ttk.Button(hall_frame, text="Download Log", command=lambda: download_log(hall_number))
-        download_button.grid(row=camera_count // 3 + 2, column=0, columnspan=3, pady=10)
+        download_button = ttk.Button(hall_frame, text="Download Log",
+                                     command=lambda: download_log(hall_number))
+        download_button.grid(
+            row=camera_count // 3 + 2, column=0, columnspan=3, pady=10)
 
     def log_event(hall_number, camera_id, event_type):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.time.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"{timestamp} - Camera {camera_id}: {event_type} in Hall {hall_number}"
-        
+
         # Write the log entry to a file specific to the hall
         log_file_path = f"hall_{hall_number}_log.txt"
         with open(log_file_path, "a") as log_file:
             log_file.write(log_entry + "\n")
-        
+
         # Update the GUI with the new log entry
         if hall_number in hall_logs:
             hall_logs[hall_number].append(log_entry)
-            hall_log_labels[hall_number].configure(text="\n".join(hall_logs[hall_number]))
+            hall_log_labels[hall_number].configure(
+                text="\n".join(hall_logs[hall_number]))
 
     hall_logs = {}
     hall_log_labels = {}
 
-    root.protocol("WM_DELETE_WINDOW", lambda: stop_event.set() or root.destroy())
+    root.protocol("WM_DELETE_WINDOW", lambda: stop_event.set()
+                  or root.destroy())
     root.mainloop()
+
 
 if __name__ == "__main__":
     start_gui()

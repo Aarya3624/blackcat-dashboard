@@ -6,10 +6,10 @@ import dlib
 import numpy as np
 import argparse
 import imutils
-import time
 from imutils.video import VideoStream, FPS
 from PIL import Image, ImageTk
-import customtkinter as ctk
+import tkinter as tk
+from tkinter import ttk, messagebox
 from mylib.centroidtracker import CentroidTracker
 from mylib.trackableobject import TrackableObject
 
@@ -142,7 +142,6 @@ def run_video_processing(camera_id, video_source, update_counts):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
             cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 0, 255), -1)
 
-        # Overlay entered and exited counts inside the video
         cv2.putText(frame, f"Entered: {totalDown}", (10, H - 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         cv2.putText(frame, f"Exited: {totalUp}", (10, H - 10),
@@ -160,8 +159,8 @@ def run_video_processing(camera_id, video_source, update_counts):
 
     update_counts(camera_id, totalUp, totalDown)
 
-def update_gui(camera_id, img_label):
-    global output_frames
+def update_gui(camera_id, img_label, count_label):
+    global output_frames, camera_trackers
 
     with lock:
         if camera_id in output_frames:
@@ -171,38 +170,42 @@ def update_gui(camera_id, img_label):
             img_label.img_tk = img_tk  # Keep a reference
             img_label.configure(image=img_tk)
 
-    img_label.after(10, update_gui, camera_id, img_label)
+            if camera_id in camera_trackers:
+                count_label.config(text=f"Entered: {camera_trackers[camera_id]['down']}, Exited: {camera_trackers[camera_id]['up']}")
+
+    img_label.after(10, update_gui, camera_id, img_label, count_label)
 
 def start_gui():
-    ctk.set_appearance_mode("Light")
-    ctk.set_default_color_theme("blue")
-
-    root = ctk.CTk()
+    root = tk.Tk()
     root.title("People Counter Dashboard")
     root.geometry("1200x800")
 
-    notebook = ctk.CTkTabview(root)
+    style = ttk.Style()
+    style.theme_use("clam")
+    style.configure("TButton", padding=6, relief="flat", background="#0078d7", foreground="#ffffff")
+    style.configure("TLabel", background="#f0f0f0", font=("Arial", 12))
+    style.configure("TFrame", background="#ffffff")
+
+    notebook = ttk.Notebook(root)
     notebook.pack(expand=1, fill='both')
 
-    # Create tabs using CTkFrame
-    people_counter_tab = ctk.CTkFrame(notebook)
-    notebook.add(people_counter_tab)
-    people_counter_tab.configure(text="Add Cameras")  # This line won't work, you need a label inside the tab
+    people_counter_tab = ttk.Frame(notebook)
+    notebook.add(people_counter_tab, text="Add Cameras")
 
     # Create input fields for Camera ID, Hall Number, and Camera URL
-    camera_id_label = ctk.CTkLabel(people_counter_tab, text="Camera ID:")
+    camera_id_label = ttk.Label(people_counter_tab, text="Camera ID:")
     camera_id_label.pack(pady=5)
-    camera_id_entry = ctk.CTkEntry(people_counter_tab)
+    camera_id_entry = ttk.Entry(people_counter_tab)
     camera_id_entry.pack(pady=5)
 
-    hall_number_label = ctk.CTkLabel(people_counter_tab, text="Hall Number:")
+    hall_number_label = ttk.Label(people_counter_tab, text="Hall Number:")
     hall_number_label.pack(pady=5)
-    hall_number_entry = ctk.CTkEntry(people_counter_tab)
+    hall_number_entry = ttk.Entry(people_counter_tab)
     hall_number_entry.pack(pady=5)
 
-    camera_url_label = ctk.CTkLabel(people_counter_tab, text="Camera URL:")
+    camera_url_label = ttk.Label(people_counter_tab, text="Camera URL:")
     camera_url_label.pack(pady=5)
-    camera_url_entry = ctk.CTkEntry(people_counter_tab)
+    camera_url_entry = ttk.Entry(people_counter_tab)
     camera_url_entry.pack(pady=5)
 
     def add_camera():
@@ -211,42 +214,68 @@ def start_gui():
         camera_url = camera_url_entry.get().strip()
 
         if not camera_id or not hall_number or not camera_url:
-            ctk.CTkMessageBox.show_error("Input Error", "All fields must be filled.")
+            messagebox.showerror("Input Error", "All fields are required.")
             return
 
         try:
             camera_id = int(camera_id)
         except ValueError:
-            ctk.CTkMessageBox.show_error("Input Error", "Camera ID must be a number.")
+            messagebox.showerror("Input Error", "Camera ID must be a number.")
             return
 
-        update_counts = lambda camera_id, up, down: print(f"Camera ID {camera_id}: Entered {up}, Exited {down}")
+        if camera_id in camera_trackers:
+            messagebox.showerror("Error", f"Camera ID {camera_id} already exists.")
+            return
 
-        if camera_url.startswith('http'):
-            t = threading.Thread(target=run_video_processing, args=(camera_id, camera_url, update_counts))
-        else:
-            t = threading.Thread(target=run_video_processing, args=(camera_id, int(camera_url), update_counts))
+        hall_tab = None
+        for tab in notebook.tabs():
+            if notebook.tab(tab, "text") == f"Hall {hall_number}":
+                hall_tab = tab
+                break
 
-        t.daemon = True
-        t.start()
+        if hall_tab is None:
+            hall_tab = ttk.Frame(notebook)
+            notebook.add(hall_tab, text=f"Hall {hall_number}")
 
-        # Add the frame to display video feed
-        frame_label = ctk.CTkLabel(people_counter_tab, text=f"Camera {camera_id}")
-        frame_label.pack(pady=10)
-        frame_image_label = ctk.CTkLabel(people_counter_tab, text="Loading...")
-        frame_image_label.pack(pady=10)
-        update_gui(camera_id, frame_image_label)
+        hall_frame = notebook.nametowidget(hall_tab)
+        camera_count = len(hall_frame.winfo_children())
 
-    add_button = ctk.CTkButton(people_counter_tab, text="Add Camera", command=add_camera)
-    add_button.pack(pady=20)
+        # Define the grid layout
+        rows = 2
+        cols = 3
+        row = camera_count // cols
+        col = camera_count % cols
 
-    # Start the GUI
+        new_camera_frame = ttk.Frame(hall_frame, width=200, height=150)
+        new_camera_frame.grid(row=row, column=col, padx=5, pady=5, sticky='nsew')
+
+        new_camera_label = ttk.Label(new_camera_frame, text=f"Camera {camera_id} - Hall {hall_number}")
+        new_camera_label.pack(side="top")
+
+        new_camera_img_label = ttk.Label(new_camera_frame)
+        new_camera_img_label.pack(side="left", expand=True, fill="both")
+
+        camera_trackers[camera_id] = {'up': 0, 'down': 0}
+
+        def update_counts(camera_id, up, down):
+            camera_trackers[camera_id]['up'] = up
+            camera_trackers[camera_id]['down'] = down
+
+        camera_thread = threading.Thread(target=run_video_processing, args=(camera_id, camera_url, update_counts))
+        camera_thread.start()
+
+        update_gui(camera_id, new_camera_img_label, new_camera_img_label)
+
+    add_camera_button = ttk.Button(people_counter_tab, text="Add Camera", command=add_camera)
+    add_camera_button.pack(pady=10)
+
+    def on_closing():
+        stop_event.set()
+        root.destroy()
+        sys.exit()
+
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
 
-def signal_handler(sig, frame):
-    stop_event.set()
-    sys.exit(0)
-
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal_handler)
     start_gui()

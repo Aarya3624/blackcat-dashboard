@@ -1,0 +1,7 @@
+2024-10-07 13:26:58 - Camera 1: Person exited in Hall 1
+2024-10-07 13:30:03 - Camera 1: Person exited in Hall 1
+2024-10-07 13:32:47 - Camera 1: Person exited in Hall 1
+2024-10-07 13:48:41 - Camera 1: Person exited in Hall 1
+2024-10-07 13:48:41 - Camera 2: Person exited in Hall 1
+2024-10-07 13:58:48 - Camera 1: Person exited in Hall 1
+2024-10-07 14:03:43 - Camera 2: Person exited in Hall 1

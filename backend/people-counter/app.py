@@ -329,7 +329,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     video_thread = threading.Thread(target=run)
     video_thread.start()
-    app.run(host="0.0.0.0", port=8000, threaded=True, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, threaded=True, use_reloader=False)
 
 # import signal
 # import sys

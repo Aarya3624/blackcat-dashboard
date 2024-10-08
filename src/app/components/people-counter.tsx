@@ -11,7 +11,7 @@ const PeopleCounter: React.FC = () => {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/count");
+        const response = await fetch("http://127.0.0.1:5000/count");
         const data = await response.json();
         setCounts(data);
       } catch (error) {
@@ -39,7 +39,7 @@ const PeopleCounter: React.FC = () => {
             padding: "10px",
             borderRadius: "10px",
           }}
-          src="http://127.0.0.1:8000/video_feed"
+          src="http://127.0.0.1:5000/video_feed/1"
           alt="Video Feed"
         />
       </div>
@@ -49,9 +49,9 @@ const PeopleCounter: React.FC = () => {
           height: "140px",
         }}
       >
-        <div>Entered: {counts.entered}</div>
-        <div>Exited: {counts.exited}</div>
-        <div>Inside: {counts.inside}</div>
+        <div>Entered: {counts.entered[id]}</div>
+        <div>Exited: {counts.exited[id]}</div>
+        <div>Inside: {counts.inside[id]}</div>
       </div>
     </div>
   );

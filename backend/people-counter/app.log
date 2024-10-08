@@ -1,0 +1,5 @@
+2024-10-07 12:50:42,170 - ERROR - Error downloading log: cannot access free variable 'start_date_entry' where it is not associated with a value in enclosing scope
+2024-10-07 12:50:45,618 - ERROR - Error downloading log: cannot access free variable 'start_date_entry' where it is not associated with a value in enclosing scope
+2024-10-07 12:52:53,610 - ERROR - Error downloading log: cannot access free variable 'start_date_entry' where it is not associated with a value in enclosing scope
+2024-10-07 14:03:43,859 - INFO - Signal received, shutting down...
+2024-10-07 14:10:19,778 - ERROR - Error downloading log: cannot access free variable 'start_date_entry' where it is not associated with a value in enclosing scope

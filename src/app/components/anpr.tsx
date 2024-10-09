@@ -224,14 +224,27 @@ const ANPR = () => {
           Add Camera
         </button>
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flexWrap: "wrap",
+          gap: "20px",
+        }}
+      >
         {Object.keys(counts.entered || {}).map((id) => (
           <div
+            className="border border-grey-300 p-5 justify-center items-center mt-1 rounded-md"
             key={id}
             style={{
               display: "flex",
-              flexDirection: "column",
+              flexDirection: "row",
+              gap: "10px",
               alignItems: "center",
+              padding: "10px",
+              borderWidth: 1,
+              borderRadius: "5px",
+              backgroundColor: "#252525",
             }}
           >
             <h3>Camera {id}</h3>
@@ -241,7 +254,7 @@ const ANPR = () => {
             <img
               id={`camera-${id}`}
               alt={`Camera ${id}`}
-              style={{ width: "640px", height: "480px" }}
+              style={{ width: "400px", height: "300px" }}
             />
             <button onClick={() => handleRemoveCamera(id)}>
               Remove Camera

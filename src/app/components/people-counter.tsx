@@ -25,36 +25,7 @@ const PeopleCounter: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
 
-  return (
-    <div className="flex flex-col w-full gap-2 h-full">
-      <h1 className="text-3xl font-bold">People Counter</h1>
-
-      <p className="text-xs text-gray-400">Welcome to your dashboard!</p>
-
-      <div className="flex bg-grey-400 border border-grey-300 p-5 justify-center items-center w-2/3 mt-1 rounded-md flex-grow">
-        <img
-          style={{
-            width: "100%",
-            height: "450px",
-            padding: "10px",
-            borderRadius: "10px",
-          }}
-          src="http://127.0.0.1:5000/video_feed/1"
-          alt="Video Feed"
-        />
-      </div>
-      <div
-        className="flex bg-grey-400 border border-grey-300 p-5 justify-evenly items-center w-2/3 mt-1 rounded-md gap-5"
-        style={{
-          height: "140px",
-        }}
-      >
-        <div>Entered: {counts.entered[id]}</div>
-        <div>Exited: {counts.exited[id]}</div>
-        <div>Inside: {counts.inside[id]}</div>
-      </div>
-    </div>
-  );
+  return <div></div>;
 };
 
 export default PeopleCounter;

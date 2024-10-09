@@ -59,10 +59,13 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-row">
       <div
-        className={` flex-shrink-0 h-screen border-r border-grey-300 transition-width duration-300 ease-in-out`}
+        className={` flex-shrink-0 h-lvh border-r border-grey-300 transition-width duration-300 ease-in-out`}
         style={{
           backgroundColor: "#141414",
           width: isCollapsed ? "52px" : "200px",
+          position: "fixed",
+          top: 0,
+          left: 0,
         }}
       >
         <div className="flex items-center justify-between px-4 py-3">
@@ -107,7 +110,14 @@ export default function Home() {
           )}
         </div>
       </div>
-      <div className="flex-grow p-4">{renderContent()}</div>
+      <div
+        className="flex-grow p-4"
+        style={{
+          marginLeft: isCollapsed ? "52px" : "200px",
+        }}
+      >
+        {renderContent()}
+      </div>
     </main>
   );
 }

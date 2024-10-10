@@ -304,7 +304,7 @@ class VideoNamespace(Namespace):
         print('Client disconnected')
 
 # Use the custom namespace when creating the Socket.IO instance
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', namespace='/video')
+socketio = SocketIO(app, cors_allowed_origins="*", namespace='/video')
 socketio.on_namespace(VideoNamespace('/video'))
 
 logging.basicConfig(level=logging.DEBUG)
@@ -341,7 +341,8 @@ def run_camera(camera_id, url):
 
     net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
 
-    vs = VideoStream(url).start()
+    vs = VideoStream(0).start()
+    # vs = VideoStream(url).start()
     time.sleep(2.0)
 
     writer = None

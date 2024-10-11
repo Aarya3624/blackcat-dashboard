@@ -1,3 +1,6 @@
+import gevent
+from gevent import monkey
+monkey.patch_all()
 import signal
 import sys
 import threading
@@ -32,7 +35,7 @@ class VideoNamespace(Namespace):
         print('Client disconnected')
 
 # Use the custom namespace when creating the Socket.IO instance
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading', namespace='/video')
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent', namespace='/video')
 socketio.on_namespace(VideoNamespace('/video'))
 
 logging.basicConfig(level=logging.DEBUG)

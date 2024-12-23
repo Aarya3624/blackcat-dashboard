@@ -60,6 +60,9 @@ def run():
     # load our serialized model from disk
     net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
 
+    net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+    net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+
     # if a video path was not supplied, grab a reference to the ip camera
     if not args.get("input", False):
         print("[INFO] Starting the live stream..")
